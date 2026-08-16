@@ -10,6 +10,13 @@ scoop bucket add sps-l https://github.com/SPS-L/stepss-scoop
 scoop install stepss
 ```
 
+> **Not live yet.** The manifest is committed with a placeholder version and
+> hash, and `scoop install stepss` will fail on a 404 until the first
+> stepss-java-ui release cut after [that repository gained the portable-zip
+> build](https://github.com/SPS-L/stepss-java-ui/issues/7). That release
+> dispatches here and the workflow below rewrites the manifest with the real
+> URL and digest, after which this note should be deleted.
+
 Thereafter:
 
 ```powershell
