@@ -1,106 +1,106 @@
 {
-    "##": [
-        "Kept current by .github/workflows/update-manifest.yml, which stepss-java-ui",
-        "dispatches to from the msi leg of its release workflow. version, url and hash",
-        "are the only three fields it rewrites; everything else here is edited by hand.",
-        "",
-        "The url names a release asset of stepss-java-ui. That name is a contract",
-        "between the two repositories: rename the asset there and every release cut",
-        "afterwards stops resolving here, while older tags stay un-resyncable because",
-        "the new name never existed on them."
-    ],
-    "version": "3.74.14",
-    "description": "Static and Transient Electric Power Systems Simulation: dynamic simulation, power flow and small-signal stability analysis of electric power systems",
-    "homepage": "https://stepss.sps-lab.org/",
-    "license": {
-        "identifier": "Apache-2.0, Proprietary",
-        "url": "https://stepss.sps-lab.org/getting-started/license/"
-    },
-    "architecture": {
-        "64bit": {
-            "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v3.74.14/STEPSS-3.74.14-windows.zip",
-            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
-        }
-    },
-    "extract_dir": "STEPSS",
-    "bin": [
-        [
-            "STEPSS.exe",
-            "stepss"
-        ]
-    ],
-    "shortcuts": [
-        [
-            "STEPSS.exe",
-            "STEPSS",
-            "",
-            "STEPSS.ico"
-        ]
-    ],
-    "post_install": [
-        "# Scoop creates Start Menu entries only, under 'Scoop Apps'. The Windows",
-        "# installer also puts an icon on the desktop, and this route should not be",
-        "# the poor relation, so the desktop shortcut is made here by hand.",
-        "#",
-        "# $dir is the 'current' junction rather than the versioned directory:",
-        "# link_current runs before post_install, so this shortcut keeps working",
-        "# across updates instead of pointing into a directory the next release",
-        "# deletes. IconLocation is set explicitly rather than left to the target's",
-        "# own resources, so that a build which somehow shipped without STEPSS.ico",
-        "# is caught here and in the shortcuts entry above rather than showing a",
-        "# blank page icon nobody reports.",
-        "$shell = New-Object -ComObject WScript.Shell",
-        "$link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'STEPSS.lnk'))",
-        "$link.TargetPath = \"$dir\\STEPSS.exe\"",
-        "$link.WorkingDirectory = \"$dir\"",
-        "$link.IconLocation = \"$dir\\STEPSS.ico\"",
-        "$link.Description = 'Static and Transient Electric Power Systems Simulation'",
-        "$link.Save()",
-        "Write-Host 'Creating desktop shortcut for STEPSS'"
-    ],
-    "pre_uninstall": [
-        "# Runs on update too, before the old version is torn down, and post_install",
-        "# then makes the shortcut again. Only a shortcut that points into this",
-        "# Scoop app is removed: one of the same name left by the MSI installer, or",
-        "# made by the user, is theirs and not ours to delete.",
-        "$path = Join-Path ([Environment]::GetFolderPath('Desktop')) 'STEPSS.lnk'",
-        "if (Test-Path $path) {",
-        "    $target = (New-Object -ComObject WScript.Shell).CreateShortcut($path).TargetPath",
-        "    if ($target -like '*\\apps\\stepss\\*') {",
-        "        Remove-Item $path -Force",
-        "        Write-Host 'Removing desktop shortcut for STEPSS'",
-        "    }",
-        "}"
-    ],
-    "suggest": {
-        "Fortran toolchain, needed only to compile your own models": "msys2"
-    },
-    "notes": [
-        "STEPSS is installed under your own profile and needs no administrator rights.",
-        "It is on the Start Menu under 'Scoop Apps', on your desktop, and on PATH as 'stepss'.",
-        "",
-        "LICENSING: STEPSS is not Apache-2.0 taken as a whole, whatever this bucket's own",
-        "repository says. The bundled RAMSES engine is proprietary, free for non-commercial",
-        "use only and capped at 1000 buses and 2 cores; Helios and CODEGEN are under Academic",
-        "Public Licences; only the two user interfaces are Apache-2.0. Installing agrees to",
-        "nothing, since the licence appears the first time you launch STEPSS, but please read",
-        "https://stepss.sps-lab.org/getting-started/license/ before you run it.",
-        "",
-        "Compiling your OWN models with CODEGEN additionally needs a Fortran toolchain. It is",
-        "a large download, nothing else in STEPSS needs it, and most users can skip this:",
-        "    scoop install msys2",
-        "    msys2                 # then, in the MSYS2 shell that opens:",
-        "    pacman -S mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas make",
-        "STEPSS finds a Scoop-installed MSYS2 on its own; there is no MSYS2_ROOT to set."
-    ],
-    "checkver": {
-        "github": "https://github.com/SPS-L/stepss-java-ui"
-    },
-    "autoupdate": {
-        "architecture": {
-            "64bit": {
-                "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v$version/STEPSS-$version-windows.zip"
-            }
-        }
+  "##": [
+    "Kept current by .github/workflows/update-manifest.yml, which stepss-java-ui",
+    "dispatches to from the msi leg of its release workflow. version, url and hash",
+    "are the only three fields it rewrites; everything else here is edited by hand.",
+    "",
+    "The url names a release asset of stepss-java-ui. That name is a contract",
+    "between the two repositories: rename the asset there and every release cut",
+    "afterwards stops resolving here, while older tags stay un-resyncable because",
+    "the new name never existed on them."
+  ],
+  "version": "3.74.15",
+  "description": "Static and Transient Electric Power Systems Simulation: dynamic simulation, power flow and small-signal stability analysis of electric power systems",
+  "homepage": "https://stepss.sps-lab.org/",
+  "license": {
+    "identifier": "Apache-2.0, Proprietary",
+    "url": "https://stepss.sps-lab.org/getting-started/license/"
+  },
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v3.74.15/STEPSS-3.74.15-windows.zip",
+      "hash": "b7dbfab082356d81eb6a6f355434239f4b81af2216906e6a8d5b28bfa9dd5548"
     }
+  },
+  "extract_dir": "STEPSS",
+  "bin": [
+    [
+      "STEPSS.exe",
+      "stepss"
+    ]
+  ],
+  "shortcuts": [
+    [
+      "STEPSS.exe",
+      "STEPSS",
+      "",
+      "STEPSS.ico"
+    ]
+  ],
+  "post_install": [
+    "# Scoop creates Start Menu entries only, under 'Scoop Apps'. The Windows",
+    "# installer also puts an icon on the desktop, and this route should not be",
+    "# the poor relation, so the desktop shortcut is made here by hand.",
+    "#",
+    "# $dir is the 'current' junction rather than the versioned directory:",
+    "# link_current runs before post_install, so this shortcut keeps working",
+    "# across updates instead of pointing into a directory the next release",
+    "# deletes. IconLocation is set explicitly rather than left to the target's",
+    "# own resources, so that a build which somehow shipped without STEPSS.ico",
+    "# is caught here and in the shortcuts entry above rather than showing a",
+    "# blank page icon nobody reports.",
+    "$shell = New-Object -ComObject WScript.Shell",
+    "$link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'STEPSS.lnk'))",
+    "$link.TargetPath = \"$dir\\STEPSS.exe\"",
+    "$link.WorkingDirectory = \"$dir\"",
+    "$link.IconLocation = \"$dir\\STEPSS.ico\"",
+    "$link.Description = 'Static and Transient Electric Power Systems Simulation'",
+    "$link.Save()",
+    "Write-Host 'Creating desktop shortcut for STEPSS'"
+  ],
+  "pre_uninstall": [
+    "# Runs on update too, before the old version is torn down, and post_install",
+    "# then makes the shortcut again. Only a shortcut that points into this",
+    "# Scoop app is removed: one of the same name left by the MSI installer, or",
+    "# made by the user, is theirs and not ours to delete.",
+    "$path = Join-Path ([Environment]::GetFolderPath('Desktop')) 'STEPSS.lnk'",
+    "if (Test-Path $path) {",
+    "    $target = (New-Object -ComObject WScript.Shell).CreateShortcut($path).TargetPath",
+    "    if ($target -like '*\\apps\\stepss\\*') {",
+    "        Remove-Item $path -Force",
+    "        Write-Host 'Removing desktop shortcut for STEPSS'",
+    "    }",
+    "}"
+  ],
+  "suggest": {
+    "Fortran toolchain, needed only to compile your own models": "msys2"
+  },
+  "notes": [
+    "STEPSS is installed under your own profile and needs no administrator rights.",
+    "It is on the Start Menu under 'Scoop Apps', on your desktop, and on PATH as 'stepss'.",
+    "",
+    "LICENSING: STEPSS is not Apache-2.0 taken as a whole, whatever this bucket's own",
+    "repository says. The bundled RAMSES engine is proprietary, free for non-commercial",
+    "use only and capped at 1000 buses and 2 cores; Helios and CODEGEN are under Academic",
+    "Public Licences; only the two user interfaces are Apache-2.0. Installing agrees to",
+    "nothing, since the licence appears the first time you launch STEPSS, but please read",
+    "https://stepss.sps-lab.org/getting-started/license/ before you run it.",
+    "",
+    "Compiling your OWN models with CODEGEN additionally needs a Fortran toolchain. It is",
+    "a large download, nothing else in STEPSS needs it, and most users can skip this:",
+    "    scoop install msys2",
+    "    msys2                 # then, in the MSYS2 shell that opens:",
+    "    pacman -S mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas make",
+    "STEPSS finds a Scoop-installed MSYS2 on its own; there is no MSYS2_ROOT to set."
+  ],
+  "checkver": {
+    "github": "https://github.com/SPS-L/stepss-java-ui"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v$version/STEPSS-$version-windows.zip"
+      }
+    }
+  }
 }
