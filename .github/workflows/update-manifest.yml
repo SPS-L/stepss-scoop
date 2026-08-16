@@ -1,0 +1,243 @@
+name: Update the Scoop manifest
+
+# Re-points bucket/stepss.json at the newest stepss-java-ui release that carries
+# a portable Windows zip, and commits the result. A Scoop bucket IS its git
+# repository, so unlike the APT archive this workflow has to write to the tree
+# rather than deploy somewhere: what is committed here is exactly what
+# `scoop update` reads.
+#
+# Only three fields are ever rewritten: version, and the url and hash under
+# architecture.64bit. Everything else in the manifest is hand-edited, which is
+# why this uses jq to set those three rather than regenerating the file.
+#
+# The hash comes from the GitHub API's own per-asset digest, not from
+# downloading and hashing 230MB. That is the same value `sha256sum` would give:
+# GitHub computes it on upload.
+#
+# No ${{ }} expression is interpolated into the text of a run: script. Values
+# arrive through env: and are read as quoted shell variables, which is the
+# convention across every stepss-* workflow and the reason a hostile release tag
+# cannot reach this job's credentials.
+
+on:
+  # From the msi leg of stepss-java-ui's release workflow, which fires it after,
+  # and only after, the portable zip is attached to the release.
+  repository_dispatch:
+    types: [stepss-release]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'bucket/**'
+      - '.github/workflows/update-manifest.yml'
+  # Dispatches do not retry. A 401 or a dropped event otherwise means this
+  # bucket silently stops tracking releases and every user's `scoop update`
+  # quietly keeps them on an old version, which is the exact failure the APT
+  # archive carries a weekly schedule against. It costs nothing here for the
+  # same reason: the run is idempotent, and commits nothing when the manifest
+  # already names the newest release.
+  schedule:
+    - cron: '41 4 * * 1'
+
+concurrency:
+  group: scoop-manifest
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: SPS-L/stepss-java-ui
+  # Releases to look back through for one carrying a portable zip. More than
+  # one, deliberately: the Windows leg of a release can fail on its own without
+  # taking the release down (v3.74.8 shipped a .deb and a .dmg and no .msi), and
+  # when it does, this bucket should go on serving the last good build rather
+  # than failing or, worse, pointing at an asset that does not exist.
+  SCAN_RELEASES: '5'
+
+jobs:
+  # Everything that does not need credentials or a network round trip, so a
+  # hand-edit that breaks the manifest is caught on the push that made it rather
+  # than a week later on the schedule.
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Check the manifest is intact
+        run: |
+          set -euo pipefail
+          jq empty bucket/stepss.json
+          echo "bucket/stepss.json is valid JSON."
+
+          # The shortcut and its icon are the parts most likely to be dropped by
+          # a careless edit, and they fail at the worst possible moment: Scoop
+          # refuses to create a shortcut whose icon file is missing, so a
+          # manifest that has lost STEPSS.ico breaks the install for every user
+          # rather than degrading to a plain icon. The .ico is put into the app
+          # image by stepss-java-ui's release workflow; the two have to agree.
+          check() {
+            if [ "$(jq -r "$1" bucket/stepss.json)" != "$2" ]; then
+              echo "bucket/stepss.json: expected $1 to be $2, got $(jq -r "$1" bucket/stepss.json)"
+              exit 1
+            fi
+            echo "ok: $1 is $2"
+          }
+          check '.extract_dir' 'STEPSS'
+          check '.shortcuts[0][0]' 'STEPSS.exe'
+          check '.shortcuts[0][1]' 'STEPSS'
+          check '.shortcuts[0][3]' 'STEPSS.ico'
+
+          # The desktop shortcut is the other half of the same requirement, and
+          # it lives in a PowerShell block that nothing else would notice the
+          # loss of.
+          for hook in post_install pre_uninstall; do
+            if ! jq -e --arg h "$hook" '.[$h] | join("\n") | contains("Desktop")' \
+                 bucket/stepss.json >/dev/null; then
+              echo "bucket/stepss.json: $hook no longer manages the desktop shortcut."
+              exit 1
+            fi
+            echo "ok: $hook still manages the desktop shortcut"
+          done
+
+  update:
+    needs: validate
+    # Not on push: a push has just been committed, and rewriting and pushing
+    # again from the same event is how a workflow ends up in a loop with itself.
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      # The only elevated thing here, and it is why: the manifest is committed
+      # back to this repository. checkout@v7 leaves the credentials behind for
+      # the push at the end.
+      contents: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      # github.token, and never the built-in spelled as a secret: the two are
+      # the same value, and keeping one spelling is what lets
+      # `grep -rho 'secrets\.[A-Z_]*'` answer "which of these is a real secret"
+      # correctly. The answer for this repository should be nothing at all.
+      # stepss-java-ui is public, so the built-in token reaches its releases.
+      - name: Find the newest release carrying a portable zip
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCHED_TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCHED_TAG:-}" ]; then
+            echo "Woken by $DISPATCHED_TAG."
+          fi
+
+          tags=$(gh release list --repo "$UPSTREAM" \
+                   --limit "$SCAN_RELEASES" --exclude-drafts \
+                   --json tagName --jq '.[].tagName')
+
+          tag=""
+          for candidate in $tags; do
+            # Installers arrived late and the portable zip later still, so a
+            # release with no *-windows.zip is normal rather than an error.
+            line=$(gh api "repos/$UPSTREAM/releases/tags/$candidate" \
+                     --jq '.assets[]
+                           | select(.name | endswith("-windows.zip"))
+                           | "\(.name)\t\(.digest)\t\(.browser_download_url)"' || true)
+            if [ -n "$line" ]; then
+              tag="$candidate"
+              name=$(printf '%s' "$line" | head -1 | cut -f1)
+              digest=$(printf '%s' "$line" | head -1 | cut -f2)
+              url=$(printf '%s' "$line" | head -1 | cut -f3)
+              break
+            fi
+            echo "no portable zip in $candidate"
+          done
+
+          if [ -z "$tag" ]; then
+            echo "None of the last $SCAN_RELEASES releases of $UPSTREAM carries a"
+            echo "*-windows.zip asset, so there is nothing this bucket can serve."
+            echo "That asset is built by the msi leg of that repository's release"
+            echo "workflow; check whether the Windows leg is failing."
+            exit 1
+          fi
+
+          # GitHub reports the digest it computed on upload, as "sha256:<hex>".
+          # Assets uploaded before GitHub added the field report nothing, so the
+          # download is the fallback rather than the normal path.
+          hash="${digest#sha256:}"
+          if [ -z "$hash" ]; then
+            echo "$tag reports no digest for $name; hashing it the slow way."
+            curl -fsSL -o asset.zip "$url"
+            hash=$(sha256sum asset.zip | cut -d' ' -f1)
+            rm -f asset.zip
+          fi
+
+          {
+            echo "tag=$tag"
+            echo "version=${tag#v}"
+            echo "name=$name"
+            echo "url=$url"
+            echo "hash=$hash"
+          } >> "$GITHUB_OUTPUT"
+          echo "$name from $tag, sha256 $hash"
+
+      - name: Rewrite the manifest
+        id: rewrite
+        env:
+          VERSION: ${{ steps.find.outputs.version }}
+          URL: ${{ steps.find.outputs.url }}
+          HASH: ${{ steps.find.outputs.hash }}
+        run: |
+          set -euo pipefail
+          jq --arg version "$VERSION" --arg url "$URL" --arg hash "$HASH" \
+             '.version = $version
+              | .architecture."64bit".url = $url
+              | .architecture."64bit".hash = $hash' \
+             bucket/stepss.json > manifest.new
+          mv manifest.new bucket/stepss.json
+          jq empty bucket/stepss.json
+
+          if git diff --quiet -- bucket/stepss.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Already at $VERSION; nothing to commit."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff -- bucket/stepss.json
+          fi
+
+      # Only when the version actually moved, because it costs a 230MB
+      # download. Worth it then: the manifest promises Scoop a directory layout
+      # and an icon file, and if the app image ever ships without STEPSS.ico
+      # every `scoop install stepss` fails at the shortcut step. Catching that
+      # here costs one red run; not catching it costs every user.
+      - name: Check the zip really contains what the manifest promises
+        if: steps.rewrite.outputs.changed == 'true'
+        env:
+          URL: ${{ steps.find.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o asset.zip "$URL"
+          entries=$(unzip -Z1 asset.zip)
+          for required in STEPSS/STEPSS.exe STEPSS/STEPSS.ico; do
+            if ! printf '%s\n' "$entries" | grep -qxF "$required"; then
+              echo "The zip does not contain $required."
+              echo "extract_dir and shortcuts in bucket/stepss.json both depend on it."
+              printf '%s\n' "$entries" | head -20
+              exit 1
+            fi
+            echo "ok: $required is in the zip"
+          done
+          rm -f asset.zip
+
+      - name: Commit it
+        if: steps.rewrite.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.find.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add bucket/stepss.json
+          git commit -m "stepss: $VERSION"
+          git push
+          echo "bucket/stepss.json now serves $VERSION."
