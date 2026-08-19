@@ -9,7 +9,7 @@
     "afterwards stops resolving here, while older tags stay un-resyncable because",
     "the new name never existed on them."
   ],
-  "version": "3.76.2",
+  "version": "3.77",
   "description": "Static and Transient Electric Power Systems Simulation: dynamic simulation, power flow and small-signal stability analysis of electric power systems",
   "homepage": "https://stepss.sps-lab.org/",
   "license": {
@@ -18,8 +18,8 @@
   },
   "architecture": {
     "64bit": {
-      "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v3.76.2/STEPSS-3.76.2-windows.zip",
-      "hash": "33cfdfc5e560f65b05b15f8bc455f49d1ebc9ef4f16dc316a834e5ba7fc66dd2"
+      "url": "https://github.com/SPS-L/stepss-java-ui/releases/download/v3.77/STEPSS-3.77-windows.zip",
+      "hash": "1afe3deea4359b76ea3180e380e72dc18c90788041e336093b6c0b3953ae18da"
     }
   },
   "extract_dir": "STEPSS",
