@@ -117,7 +117,7 @@ jobs:
 
       # github.token, and never the built-in spelled as a secret: the two are
       # the same value, and keeping one spelling is what lets
-      # `grep -rho 'secrets\.[A-Z_]*'` answer "which of these is a real secret"
+      # `grep -rho 'secrets\.[A-Z0-9_]*'` answer "which of these is a real secret"
       # correctly. The answer for this repository should be nothing at all.
       # stepss-java-ui is public, so the built-in token reaches its releases.
       - name: Find the newest release carrying a portable zip
